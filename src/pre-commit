@@ -1,0 +1,88 @@
+#!/usr/bin/env python3
+"""Refuse a commit on the default branch.
+
+Set REMOTE_LOOKUP to True to use origin's HEAD branch instead of master.
+"""
+
+from __future__ import annotations
+
+import shutil
+import subprocess
+import sys
+
+__version__ = "0.0.0"
+
+# False keeps the protected branch as master. True asks origin.
+REMOTE_LOOKUP: bool = False
+
+
+def resolve_git() -> str:
+    """Return the git binary on PATH. Exit if it is not installed."""
+    path = shutil.which("git")
+    if path is None:
+        print("git is not installed - Aborting", file=sys.stderr)
+        sys.exit(1)
+    return path
+
+
+def git_output(args: list[str]) -> str | None:
+    """Run git with a resolved binary. args excludes the git path."""
+    try:
+        process = subprocess.run(
+            [resolve_git(), *args],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        return None
+    if process.returncode != 0:
+        return None
+    return process.stdout.strip()
+
+
+def default_branch() -> str:
+    """Return master, or origin's HEAD branch when REMOTE_LOOKUP is True."""
+    if REMOTE_LOOKUP is not True:
+        return "master"
+    output = git_output(["remote", "show", "origin"])
+    if not output:
+        return "master"
+    for line in output.splitlines():
+        if "HEAD branch" not in line or ":" not in line:
+            continue
+        name = line.split(":", 1)[1].strip()
+        if not name or name == "(unknown)":
+            return "master"
+        return name
+    return "master"
+
+
+def current_branch() -> str | None:
+    """Return the branch name. An unborn branch still has a name."""
+    name = git_output(["symbolic-ref", "--short", "HEAD"])
+    if name:
+        return name
+    # Detached HEAD. rev-parse exits 0 and prints HEAD. An unborn branch
+    # never reaches here: symbolic-ref already returned its name.
+    detached = git_output(["rev-parse", "--abbrev-ref", "HEAD"])
+    if detached == "HEAD":
+        return detached
+    return None
+
+
+def main() -> int:
+    """Exit 1 when HEAD is the protected branch."""
+    branch = default_branch()
+    current = current_branch()
+    if current is None:
+        print("Error: Failed to determine the current Git branch.", file=sys.stderr)
+        return 1
+    if current != branch:
+        return 0
+    print(f"You cannot commit to the {branch} branch - Aborting!")
+    return 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())
