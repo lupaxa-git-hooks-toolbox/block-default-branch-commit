@@ -10,7 +10,7 @@ import shutil
 import subprocess
 import sys
 
-__version__ = "0.1.0-rc1"
+__version__ = "0.1.0"
 
 # False keeps the protected branch as master. True asks origin.
 REMOTE_LOOKUP: bool = False
