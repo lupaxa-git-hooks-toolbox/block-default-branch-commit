@@ -33,14 +33,7 @@ def _git(args: list[str], cwd: Path, *, check: bool = True) -> subprocess.Comple
     env["GIT_CONFIG_COUNT"] = "1"
     env["GIT_CONFIG_KEY_0"] = "commit.gpgsign"
     env["GIT_CONFIG_VALUE_0"] = "false"
-    return subprocess.run(
-        ["git", *args],
-        cwd=cwd,
-        check=check,
-        capture_output=True,
-        text=True,
-        env=env,
-    )
+    return subprocess.run(["git", *args], cwd=cwd, check=check, capture_output=True, text=True, env=env)
 
 
 def _init_work(work: Path) -> None:
@@ -65,12 +58,7 @@ def _repo_with_origin(head: str) -> Iterator[Path]:
         base = Path(tmp)
         bare = base / "origin.git"
         work = base / "work"
-        subprocess.run(
-            ["git", "init", "--bare", "-b", "master", str(bare)],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
+        subprocess.run(["git", "init", "--bare", "-b", "master", str(bare)], check=True, capture_output=True, text=True)
         _init_work(work)
         _git(["remote", "add", "origin", str(bare)], work)
         _git(["push", "origin", "master"], work)
@@ -195,12 +183,7 @@ def test_flag_on_unknown_head_parser_falls_back_to_master(monkeypatch):
             nonlocal remote_show_count
             if isinstance(cmd, list) and "remote" in cmd and "show" in cmd and "origin" in cmd:
                 remote_show_count += 1
-                return subprocess.CompletedProcess(
-                    cmd,
-                    0,
-                    stdout="  HEAD branch: (unknown)\n",
-                    stderr="",
-                )
+                return subprocess.CompletedProcess(cmd, 0, stdout="  HEAD branch: (unknown)\n", stderr="")
             return real_run(cmd, *args, **kwargs)
 
         monkeypatch.setattr(mod.subprocess, "run", fake_run)
